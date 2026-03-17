@@ -9,7 +9,11 @@
     "worker:dev": "cd worker && npx wrangler dev",
     "worker:deploy": "cd worker && npx wrangler deploy",
     "db:migrate": "cd worker && npx wrangler d1 execute ax-articles --file=./migrations/001_init.sql",
-    "setup": "node scripts/setup.js"
+    "setup": "node scripts/setup.js",
+    "deploy": "npx hugo && wrangler deploy",
+    "preview": "npx hugo && wrangler dev"
   },
-  "dependencies": {}
+  "devDependencies": {
+    "wrangler": "^4.74.0"
+  }
 }
