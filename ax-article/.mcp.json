@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "ax-article-api": {
+      "command": "node",
+      "args": ["mcp-server/index.js"],
+      "cwd": "."
+    }
+  }
+}
