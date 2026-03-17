@@ -139,8 +139,8 @@ async function sendToDiscord(data: ArticlePayload, env: Env): Promise<{ success:
     .join("\n")
     .slice(0, 400);
 
-  // 중요도 바
-  const importanceBar = "\u2588".repeat(data.importance) + "\u2591".repeat(5 - data.importance);
+  // 중요도 별
+  const importanceStars = "\u2B50".repeat(data.importance);
 
   // 설명 블록: 요약 + 메타
   const description = [
@@ -192,7 +192,7 @@ async function sendToDiscord(data: ArticlePayload, env: Env): Promise<{ success:
       description,
       fields,
       footer: {
-        text: `AX Research  \u2502  ${data.category}  \u2502  \uC911\uC694\uB3C4 ${importanceBar} ${data.importance}/5  \u2502  ${data.analyzed_date}`,
+        text: `AX Research  \u2502  ${data.category}  \u2502  ${importanceStars}  \u2502  ${data.analyzed_date}`,
       },
       timestamp: new Date().toISOString(),
     }],
