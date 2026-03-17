@@ -1,0 +1,28 @@
+name = "ax-article-api"
+main = "src/index.ts"
+compatibility_date = "2024-12-01"
+
+[observability]
+enabled = true
+
+# D1 Database
+[[d1_databases]]
+binding = "DB"
+database_name = "ax-articles"
+database_id = "4f42bea7-8bce-4d20-a009-417db6d78d71"
+
+# Vectorize Index
+[[vectorize]]
+binding = "VECTOR_INDEX"
+index_name = "ax-articles-vectors"
+
+# AI (임베딩 생성용)
+[ai]
+binding = "AI"
+
+# 환경변수
+[vars]
+ENVIRONMENT = "production"
+
+# 시크릿 (wrangler secret put 으로 설정)
+# AX_API_TOKEN = "your-secret-token"

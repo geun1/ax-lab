@@ -1,0 +1,15 @@
+{
+  "name": "ax-article-plugin",
+  "version": "1.0.0",
+  "description": "AX Article Analysis Plugin for Claude Cowork",
+  "type": "module",
+  "scripts": {
+    "discord:send": "node scripts/discord-send.js",
+    "db:save": "node scripts/db-save.js",
+    "worker:dev": "cd worker && npx wrangler dev",
+    "worker:deploy": "cd worker && npx wrangler deploy",
+    "db:migrate": "cd worker && npx wrangler d1 execute ax-articles --file=./migrations/001_init.sql",
+    "setup": "node scripts/setup.js"
+  },
+  "dependencies": {}
+}
