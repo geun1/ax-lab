@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash /Users/song/Desktop/geun1/ax_research/ax-lab/hooks/post-write.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
