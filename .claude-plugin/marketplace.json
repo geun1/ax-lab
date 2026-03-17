@@ -1,0 +1,13 @@
+{
+  "name": "ax-lab",
+  "owner": {
+    "name": "AX Research Lab"
+  },
+  "plugins": [
+    {
+      "name": "ax-article",
+      "source": "./ax-article",
+      "description": "AX 아티클 분석 및 Discord 전송 플러그인. 블로그, 아티클, 유튜브 등의 콘텐츠를 분석하여 정해진 양식으로 정리하고, 분류에 맞는 Discord 채널로 전송하며, Cloudflare D1/Vectorize에 저장합니다."
+    }
+  ]
+}
