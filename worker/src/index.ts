@@ -112,25 +112,88 @@ async function sendToDiscord(data: ArticlePayload, env: Env): Promise<{ success:
   const color = IMPORTANCE_COLOR[data.importance] || 0x5865f2;
   const sourceLabel = SOURCE_LABEL[data.source_type] || "\u{1F4CE} 기타";
 
-  const keyPoints = data.key_points.map((p) => `\u2022 ${p}`).join("\n").slice(0, 1000);
-  const actionItems = data.action_items.map((a) => `\u2610 ${a}`).join("\n").slice(0, 500);
+  // 메타 정보 한 줄로
+  const metaLine = [
+    sourceLabel,
+    data.author ? `by **${data.author}**` : null,
+    data.published_date && data.published_date !== "unknown" ? data.published_date : null,
+  ].filter(Boolean).join("  \u2022  ");
+
+  // 태그 뱃지
+  const tagBadges = data.tags.map((t) => `\`${t}\``).join("  ");
+
+  // 핵심 내용 (번호 매기기)
+  const keyPoints = data.key_points
+    .map((p, i) => `**${i + 1}.** ${p}`)
+    .join("\n\n")
+    .slice(0, 1000);
+
+  // 상세 분석 (앞부분만)
+  const analysis = data.detailed_analysis
+    ? data.detailed_analysis.slice(0, 600) + (data.detailed_analysis.length > 600 ? "..." : "")
+    : "";
+
+  // 액션 아이템
+  const actionItems = data.action_items
+    .map((a) => `\u2610  ${a}`)
+    .join("\n")
+    .slice(0, 400);
+
+  // 중요도 바
+  const importanceBar = "\u2588".repeat(data.importance) + "\u2591".repeat(5 - data.importance);
+
+  // 설명 블록: 요약 + 메타
+  const description = [
+    `> ${data.summary}`,
+    "",
+    `${metaLine}`,
+    tagBadges ? `${tagBadges}` : "",
+  ].filter((l) => l !== undefined).join("\n");
+
+  const fields: Array<{ name: string; value: string; inline: boolean }> = [];
+
+  if (keyPoints) {
+    fields.push({
+      name: "\u2500\u2500\u2500\u2500  \u{1F4CB} \uD575\uC2EC \uB0B4\uC6A9  \u2500\u2500\u2500\u2500",
+      value: keyPoints,
+      inline: false,
+    });
+  }
+
+  if (analysis) {
+    fields.push({
+      name: "\u2500\u2500\u2500\u2500  \u{1F50D} \uC0C1\uC138 \uBD84\uC11D  \u2500\u2500\u2500\u2500",
+      value: analysis,
+      inline: false,
+    });
+  }
+
+  if (data.ax_relevance) {
+    fields.push({
+      name: "\u2500\u2500\u2500\u2500  \u{1F517} AX \uAD00\uB828\uC131  \u2500\u2500\u2500\u2500",
+      value: data.ax_relevance.slice(0, 400),
+      inline: false,
+    });
+  }
+
+  if (actionItems) {
+    fields.push({
+      name: "\u2500\u2500\u2500\u2500  \u{1F4CC} \uC561\uC158 \uC544\uC774\uD15C  \u2500\u2500\u2500\u2500",
+      value: actionItems,
+      inline: false,
+    });
+  }
 
   const embed = {
     embeds: [{
-      title: `${emoji} ${data.title}`.slice(0, 256),
+      title: `${emoji}  ${data.title}`.slice(0, 256),
       url: data.source_url || undefined,
       color,
-      description: data.summary?.slice(0, 400),
-      fields: [
-        { name: "\u{1F4CB} 핵심 내용", value: keyPoints || "없음", inline: false },
-        { name: "\u{1F3F7}\uFE0F 분류", value: `${sourceLabel} | \`${data.category}\``, inline: true },
-        { name: "\u270D\uFE0F 저자", value: data.author || "알 수 없음", inline: true },
-        { name: "\u{1F4C5} 발행일", value: data.published_date || "unknown", inline: true },
-        { name: "\u{1F3F7}\uFE0F 태그", value: data.tags.map((t) => `\`${t}\``).join(" ") || "없음", inline: false },
-        { name: "\u{1F517} AX 관련성", value: (data.ax_relevance || "").slice(0, 500) || "없음", inline: false },
-        { name: "\u{1F4CC} 액션 아이템", value: actionItems || "없음", inline: false },
-      ],
-      footer: { text: `AX Research | 분석일: ${data.analyzed_date} | 중요도: ${data.importance}/5` },
+      description,
+      fields,
+      footer: {
+        text: `AX Research  \u2502  ${data.category}  \u2502  \uC911\uC694\uB3C4 ${importanceBar} ${data.importance}/5  \u2502  ${data.analyzed_date}`,
+      },
       timestamp: new Date().toISOString(),
     }],
   };
