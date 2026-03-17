@@ -2,44 +2,62 @@
 
 /**
  * AX Article Watcher
- * /tmp/ax-article-result.json 파일 변경을 감지하여 자동으로
+ * output/ax-article-result.json 파일 변경을 감지하여 자동으로
  * Cloudflare Worker API에 전송합니다 (DB 저장 + Discord 전송).
  *
  * 사용법: node watcher.js
  * (별도 터미널에서 상시 실행)
  */
 
-import { watch, readFileSync } from "fs";
+import { watch, readFileSync, existsSync, mkdirSync } from "fs";
 import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const WATCH_FILE = "/tmp/ax-article-result.json";
+const OUTPUT_DIR = resolve(__dirname, "output");
+const WATCH_FILE = resolve(OUTPUT_DIR, "ax-article-result.json");
 const API_URL = "https://ax-article-api.gsong.workers.dev";
 
+// output 디렉토리 없으면 생성
+if (!existsSync(OUTPUT_DIR)) {
+  mkdirSync(OUTPUT_DIR, { recursive: true });
+}
+
 let lastProcessed = 0;
-const DEBOUNCE_MS = 2000; // 2초 디바운스
+let lastContent = "";
+const DEBOUNCE_MS = 2000;
 
 console.log(`
-╔═══════════════════════════════════════════════╗
-║  AX Article Watcher 실행 중                    ║
-║  감시 파일: ${WATCH_FILE}        ║
-║  API: ${API_URL}  ║
-║  종료: Ctrl+C                                 ║
-╚═══════════════════════════════════════════════╝
+╔════════════════════════════════════════════════════╗
+║  AX Article Watcher 실행 중                         ║
+║  감시: output/ax-article-result.json               ║
+║  API: ${API_URL}     ║
+║  종료: Ctrl+C                                      ║
+╚════════════════════════════════════════════════════╝
 `);
+console.log("대기 중... (Cowork에서 아티클을 분석하면 자동 전송됩니다)\n");
 
 async function processFile() {
   const now = Date.now();
   if (now - lastProcessed < DEBOUNCE_MS) return;
+
+  let raw;
+  try {
+    raw = readFileSync(WATCH_FILE, "utf-8");
+  } catch {
+    return;
+  }
+
+  // 같은 내용이면 무시 (중복 전송 방지)
+  if (raw === lastContent) return;
+  lastContent = raw;
   lastProcessed = now;
 
   let data;
   try {
-    const raw = readFileSync(WATCH_FILE, "utf-8");
     data = JSON.parse(raw);
   } catch (err) {
-    console.log(`[SKIP] 파일 읽기/파싱 실패: ${err.message}`);
+    console.log(`[SKIP] JSON 파싱 실패: ${err.message}`);
     return;
   }
 
@@ -48,7 +66,7 @@ async function processFile() {
     return;
   }
 
-  console.log(`\n[NEW] 아티클 감지: "${data.title}"`);
+  console.log(`[NEW] 아티클 감지: "${data.title}"`);
   console.log(`  카테고리: ${data.category} | 중요도: ${data.importance}/5`);
 
   try {
@@ -78,18 +96,18 @@ async function processFile() {
   }
 }
 
-// 파일이 이미 있으면 무시하고 대기 (새 변경만 처리)
-console.log("대기 중... (Cowork에서 아티클을 분석하면 자동 전송됩니다)\n");
-
-watch(WATCH_FILE, { persistent: true }, (eventType) => {
-  if (eventType === "change" || eventType === "rename") {
-    processFile();
-  }
-});
-
-// 파일이 아직 없을 수 있으므로 디렉토리도 감시
-watch("/tmp", { persistent: true }, (eventType, filename) => {
+// output 디렉토리 감시
+watch(OUTPUT_DIR, { persistent: true }, (eventType, filename) => {
   if (filename === "ax-article-result.json") {
     processFile();
   }
 });
+
+// 파일 직접 감시 (이미 존재하는 경우)
+if (existsSync(WATCH_FILE)) {
+  watch(WATCH_FILE, { persistent: true }, (eventType) => {
+    if (eventType === "change" || eventType === "rename") {
+      processFile();
+    }
+  });
+}
