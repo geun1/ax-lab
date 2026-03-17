@@ -1,0 +1,13 @@
+{
+  "api_url": "https://ax-article-api.gsong.workers.dev",
+  "discord_webhooks": {
+    "ai-research": "https://discord.com/api/webhooks/1483007145896317122/V30lFmMwtDU5vIhR-Xgcy5n9sJXDyWZH410sYFMHdiTuJt8Z-V7mEZF-ZtHk4h6-j34_",
+    "ai-product": "https://discord.com/api/webhooks/1483007247062798429/tMkMO2GPaMyXwDc2wEmpM3p5fRL8PYEoNXPX3RxV5ZqHMPKmgPTc2LVy7cIPx3jQQIUb",
+    "ai-industry": "https://discord.com/api/webhooks/1483007337143730206/UmzPJJ_lqDinkeHIdROjYLdCJgRuj2ndMHCopMD4ilT0Cr4ImYV5-XXMHeJiSfJ-sxKa",
+    "dev-tool": "https://discord.com/api/webhooks/1483007390499606732/EeC_hJ0PAnTD2Fhpth3AtJtDjk3oBTU_9MUh60GDkG-zN9evLxSVxUwlL1rI2GwrZsiQ",
+    "crypto-web3": "https://discord.com/api/webhooks/1483007479708389416/-Hvo2zuRPzTHKVbrwnPV7gZK6PAYNSrt8QGK9zHJt0VGD5_wQ3zpqPnapuKO3rUWC5uu",
+    "startup": "https://discord.com/api/webhooks/1483007524553887804/ZkG9ayudefpVUpmItVyIY1kE1vCUZu0mUWv426qp0jGRVhRwfKkGlJ4ei-JC6orEXZw-",
+    "design": "https://discord.com/api/webhooks/1483007592484569191/IBicuOopjKsB1KQoJt8neRNtK2EOSmabmXrTZA1OYIA9LMYIGZfna7y504N1xODEGEO6",
+    "general": "https://discord.com/api/webhooks/1483007643336577115/XyhEP-iwMofcZvg_S-c4l0lT6fRnrkbsJmod7AjgyBRUem_3tl5gMd90vFot7CpE5c8U"
+  }
+}
