@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 
 /**
- * AX Article Watcher
+ * AX Article Watcher v3
  * output/ 디렉토리를 감시하여:
- * - ax-article-result.json → Cloudflare Worker API (DB + Discord embed)
- * - ax-article-visual.html → Discord에 파일 첨부로 전송
+ * - ax-article-result.json 변경 → API 전송 대기
+ * - ax-article-visual.html 변경 → JSON과 합쳐서 API 전송
+ * - JSON만 있어도 5초 후 자동 전송
  *
- * 사용법: node watcher.js
+ * API가 DB + Discord embed + HTML 시각화 서빙 모두 처리
  */
 
 import { watch, readFileSync, existsSync, mkdirSync } from "fs";
@@ -19,47 +20,18 @@ const JSON_FILE = resolve(OUTPUT_DIR, "ax-article-result.json");
 const HTML_FILE = resolve(OUTPUT_DIR, "ax-article-visual.html");
 const API_URL = "https://ax-article-api.gsong.workers.dev";
 
-// .env에서 웹훅 URL 로드
-const CATEGORY_WEBHOOK = {};
-const DEFAULT_WEBHOOK = loadWebhooks();
-
-function loadWebhooks() {
-  const envPath = resolve(__dirname, ".env");
-  let defaultWh = "";
-  try {
-    const content = readFileSync(envPath, "utf-8");
-    for (const line of content.split("\n")) {
-      const trimmed = line.trim();
-      if (!trimmed || trimmed.startsWith("#")) continue;
-      const eq = trimmed.indexOf("=");
-      if (eq === -1) continue;
-      const key = trimmed.slice(0, eq).trim();
-      const val = trimmed.slice(eq + 1).trim();
-      if (key === "DISCORD_WEBHOOK_DEFAULT") defaultWh = val;
-      const match = key.match(/^DISCORD_WEBHOOK_(.+)$/);
-      if (match && match[1] !== "DEFAULT") {
-        const cat = match[1].toLowerCase().replace(/_/g, "-");
-        CATEGORY_WEBHOOK[cat] = val;
-      }
-    }
-  } catch { /* ignore */ }
-  return defaultWh;
-}
-
 if (!existsSync(OUTPUT_DIR)) mkdirSync(OUTPUT_DIR, { recursive: true });
 
-let lastJsonContent = "";
-let lastHtmlContent = "";
-let lastJsonTime = 0;
-let lastHtmlTime = 0;
+var lastJsonContent = "";
+var lastSentContent = "";
+var pendingJson = null;
+var pendingTimer = null;
 const DEBOUNCE_MS = 2000;
-
-// 마지막 분석 결과의 카테고리 저장 (HTML 전송 시 채널 결정용)
-let lastCategory = "general";
+const WAIT_FOR_HTML_MS = 8000; // HTML 파일을 8초간 기다림
 
 console.log(`
 ╔════════════════════════════════════════════════════╗
-║  AX Article Watcher v2 실행 중                      ║
+║  AX Article Watcher v3                             ║
 ║  감시: output/ax-article-result.json               ║
 ║        output/ax-article-visual.html               ║
 ║  API: ${API_URL}     ║
@@ -68,130 +40,107 @@ console.log(`
 `);
 console.log("대기 중... (Cowork에서 아티클을 분석하면 자동 전송됩니다)\n");
 
-// ── JSON 처리 (DB + Discord embed) ──
-async function processJson() {
-  const now = Date.now();
-  if (now - lastJsonTime < DEBOUNCE_MS) return;
+async function sendToApi(data, html) {
+  if (html) data.visual_html = html;
 
-  let raw;
-  try { raw = readFileSync(JSON_FILE, "utf-8"); } catch { return; }
-  if (raw === lastJsonContent) return;
-  lastJsonContent = raw;
-  lastJsonTime = now;
-
-  let data;
-  try { data = JSON.parse(raw); } catch (err) {
-    console.log(`[SKIP] JSON 파싱 실패: ${err.message}`);
-    return;
-  }
-  if (!data.title || !data.category || !data.summary) {
-    console.log("[SKIP] 필수 필드 누락");
-    return;
-  }
-
-  lastCategory = data.category;
-  console.log(`[JSON] 아티클 감지: "${data.title}"`);
+  console.log(`[SEND] "${data.title}"`);
   console.log(`  카테고리: ${data.category} | 중요도: ${data.importance}/5`);
+  if (html) console.log(`  시각화 HTML: ${(html.length / 1024).toFixed(1)}KB`);
 
   try {
-    const res = await fetch(`${API_URL}/api/articles`, {
+    var res = await fetch(`${API_URL}/api/articles`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
-    const result = await res.json();
+    var result = await res.json();
     if (!res.ok) { console.log(`[ERROR] API: ${JSON.stringify(result)}`); return; }
 
     console.log(`  DB: ${result.db === "saved" ? "✅" : "❌"} (ID: ${result.id})`);
     console.log(`  Vector: ${result.vectorId ? "✅" : "❌"}`);
     console.log(`  Discord: ${result.discord === "sent" ? "✅" : "❌"}`);
-    console.log(`[DONE] JSON 전송 완료!\n`);
+    if (result.visualUrl) console.log(`  시각화: ${result.visualUrl}`);
+    console.log(`[DONE] 전송 완료!\n`);
   } catch (err) {
-    console.log(`[ERROR] JSON 전송 실패: ${err.message}`);
+    console.log(`[ERROR] 전송 실패: ${err.message}`);
   }
 }
 
-// ── HTML 처리 (Discord 파일 첨부) ──
-async function processHtml() {
-  const now = Date.now();
-  if (now - lastHtmlTime < DEBOUNCE_MS) return;
-
-  let raw;
-  try { raw = readFileSync(HTML_FILE, "utf-8"); } catch { return; }
-  if (raw === lastHtmlContent) return;
-  if (raw.length < 100) return; // 불완전한 파일 무시
-  lastHtmlContent = raw;
-  lastHtmlTime = now;
-
-  console.log(`[HTML] 시각화 파일 감지 (${(raw.length / 1024).toFixed(1)}KB)`);
-
-  // 카테고리에 맞는 웹훅 URL
-  const webhookUrl = CATEGORY_WEBHOOK[lastCategory] || DEFAULT_WEBHOOK;
-  if (!webhookUrl) {
-    console.log("[ERROR] Discord 웹훅 URL 미설정");
-    return;
-  }
-
-  // 제목 추출
-  const titleMatch = raw.match(/<title>(.*?)<\/title>/);
-  const title = titleMatch ? titleMatch[1] : "AX Article Visualization";
-
+function tryReadJson() {
   try {
-    // multipart/form-data로 파일 전송
-    const boundary = "----AXBoundary" + Date.now();
-    const filename = "ax-article-visual.html";
+    var raw = readFileSync(JSON_FILE, "utf-8");
+    if (raw === lastJsonContent || raw === lastSentContent) return null;
+    var data = JSON.parse(raw);
+    if (!data.title || !data.category || !data.summary) return null;
+    lastJsonContent = raw;
+    return data;
+  } catch { return null; }
+}
 
-    const bodyParts = [];
-    // JSON payload (메시지)
-    bodyParts.push(
-      `--${boundary}\r\n`,
-      `Content-Disposition: form-data; name="payload_json"\r\n`,
-      `Content-Type: application/json\r\n\r\n`,
-      JSON.stringify({
-        content: `📊 **시각화 리포트** — ${title}\n> 첨부된 HTML 파일을 다운로드하여 브라우저에서 열어주세요. (다크/라이트 테마, PNG 다운로드, 인쇄 지원)`,
-      }),
-      `\r\n`,
-    );
-    // 파일
-    bodyParts.push(
-      `--${boundary}\r\n`,
-      `Content-Disposition: form-data; name="files[0]"; filename="${filename}"\r\n`,
-      `Content-Type: text/html\r\n\r\n`,
-      raw,
-      `\r\n`,
-      `--${boundary}--\r\n`,
-    );
+function tryReadHtml() {
+  try {
+    var raw = readFileSync(HTML_FILE, "utf-8");
+    if (raw.length < 200) return null; // 불완전한 파일
+    return raw;
+  } catch { return null; }
+}
 
-    const body = bodyParts.join("");
+function onJsonDetected() {
+  var data = tryReadJson();
+  if (!data) return;
 
-    const res = await fetch(webhookUrl, {
-      method: "POST",
-      headers: { "Content-Type": `multipart/form-data; boundary=${boundary}` },
-      body,
-    });
+  console.log(`[JSON] 아티클 감지: "${data.title}"`);
+  console.log(`  HTML 시각화 파일 대기 중 (${WAIT_FOR_HTML_MS / 1000}초)...`);
 
-    if (!res.ok) {
-      const errBody = await res.text();
-      console.log(`[ERROR] Discord HTML 전송 실패 (${res.status}): ${errBody}`);
-      return;
-    }
+  pendingJson = data;
 
-    console.log(`  Discord 파일 전송: ✅`);
-    console.log(`[DONE] HTML 전송 완료!\n`);
-  } catch (err) {
-    console.log(`[ERROR] HTML 전송 실패: ${err.message}`);
-  }
+  // 기존 타이머 취소
+  if (pendingTimer) clearTimeout(pendingTimer);
+
+  // HTML을 기다렸다가 없으면 JSON만 전송
+  pendingTimer = setTimeout(function() {
+    if (!pendingJson) return;
+    var html = tryReadHtml();
+    lastSentContent = lastJsonContent;
+    sendToApi(pendingJson, html);
+    pendingJson = null;
+    pendingTimer = null;
+  }, WAIT_FOR_HTML_MS);
+}
+
+function onHtmlDetected() {
+  if (!pendingJson) return; // JSON이 아직 없으면 무시
+
+  var html = tryReadHtml();
+  if (!html) return;
+
+  console.log(`[HTML] 시각화 파일 감지 (${(html.length / 1024).toFixed(1)}KB)`);
+
+  // 타이머 취소하고 바로 전송
+  if (pendingTimer) clearTimeout(pendingTimer);
+  lastSentContent = lastJsonContent;
+  sendToApi(pendingJson, html);
+  pendingJson = null;
+  pendingTimer = null;
 }
 
 // ── 파일 감시 ──
-watch(OUTPUT_DIR, { persistent: true }, (eventType, filename) => {
-  if (filename === "ax-article-result.json") processJson();
-  if (filename === "ax-article-visual.html") processHtml();
+watch(OUTPUT_DIR, { persistent: true }, function(eventType, filename) {
+  if (filename === "ax-article-result.json") {
+    setTimeout(onJsonDetected, 500); // 파일 쓰기 완료 대기
+  }
+  if (filename === "ax-article-visual.html") {
+    setTimeout(onHtmlDetected, 500);
+  }
 });
 
 if (existsSync(JSON_FILE)) {
-  watch(JSON_FILE, { persistent: true }, () => processJson());
+  watch(JSON_FILE, { persistent: true }, function() {
+    setTimeout(onJsonDetected, 500);
+  });
 }
 if (existsSync(HTML_FILE)) {
-  watch(HTML_FILE, { persistent: true }, () => processHtml());
+  watch(HTML_FILE, { persistent: true }, function() {
+    setTimeout(onHtmlDetected, 500);
+  });
 }

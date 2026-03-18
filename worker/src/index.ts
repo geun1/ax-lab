@@ -38,6 +38,7 @@ interface ArticlePayload {
   ax_relevance?: string;
   action_items: string[];
   full_markdown?: string;
+  visual_html?: string;
 }
 
 const CATEGORY_WEBHOOK_KEY: Record<string, string> = {
@@ -100,7 +101,7 @@ async function generateEmbedding(ai: Ai, text: string): Promise<number[]> {
 }
 
 // Discord Embed 전송
-async function sendToDiscord(data: ArticlePayload, env: Env): Promise<{ success: boolean; error?: string }> {
+async function sendToDiscord(data: ArticlePayload, env: Env, articleId?: string): Promise<{ success: boolean; error?: string }> {
   const webhookKey = CATEGORY_WEBHOOK_KEY[data.category] || "DISCORD_WEBHOOK_GENERAL";
   const webhookUrl = (env as unknown as Record<string, string>)[webhookKey];
 
@@ -184,6 +185,15 @@ async function sendToDiscord(data: ArticlePayload, env: Env): Promise<{ success:
     });
   }
 
+  // 시각화 링크 (HTML이 저장된 경우)
+  if (articleId && data.visual_html) {
+    fields.push({
+      name: "\u2500\u2500\u2500\u2500  \u{1F4CA} \uC2DC\uAC01\uD654 \uB9AC\uD3EC\uD2B8  \u2500\u2500\u2500\u2500",
+      value: `[\u{1F517} \uC778\uD3EC\uADF8\uB798\uD53D \uBCF4\uAE30](https://ax-article-api.gsong.workers.dev/v/${articleId})`,
+      inline: false,
+    });
+  }
+
   const embed = {
     embeds: [{
       title: `${emoji}  ${data.title}`.slice(0, 256),
@@ -224,15 +234,16 @@ async function createArticle(request: Request, env: Env): Promise<Response> {
 
   // 1. D1에 저장
   await env.DB.prepare(
-    `INSERT INTO articles (id, title, source_type, source_url, author, published_date, category, tags, importance, analyzed_date, summary, key_points, detailed_analysis, ax_relevance, action_items, full_markdown)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO articles (id, title, source_type, source_url, author, published_date, category, tags, importance, analyzed_date, summary, key_points, detailed_analysis, ax_relevance, action_items, full_markdown, visual_html)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).bind(
     id, body.title, body.source_type, body.source_url || null,
     body.author || null, body.published_date || null, body.category,
     JSON.stringify(body.tags || []), body.importance, body.analyzed_date,
     body.summary, JSON.stringify(body.key_points || []),
     body.detailed_analysis || null, body.ax_relevance || null,
-    JSON.stringify(body.action_items || []), body.full_markdown || null
+    JSON.stringify(body.action_items || []), body.full_markdown || null,
+    body.visual_html || null
   ).run();
 
   // 2. Vectorize 저장
@@ -255,13 +266,14 @@ async function createArticle(request: Request, env: Env): Promise<Response> {
   }
 
   // 3. Discord 전송
-  const discordResult = await sendToDiscord(body, env);
+  const discordResult = await sendToDiscord(body, env, id);
 
   return jsonResponse({
     id,
     vectorId,
     db: "saved",
     discord: discordResult.success ? "sent" : discordResult.error,
+    visualUrl: body.visual_html ? `https://ax-article-api.gsong.workers.dev/v/${id}` : null,
   }, 201);
 }
 
@@ -356,12 +368,37 @@ export default {
     if (request.method === "OPTIONS") {
       return new Response(null, { status: 204, headers: corsHeaders() });
     }
+    const url = new URL(request.url);
+    const path = url.pathname;
+
+    // GET /v/:id — HTML 시각화 서빙 (인증 불필요, 공개 접근)
+    const visualMatch = path.match(/^\/v\/([a-f0-9-]+)$/);
+    if (visualMatch && request.method === "GET") {
+      try {
+        const row = await env.DB.prepare("SELECT visual_html, title FROM articles WHERE id = ?")
+          .bind(visualMatch[1]).first();
+        if (!row || !row.visual_html) {
+          return new Response("<h1>시각화를 찾을 수 없습니다</h1>", {
+            status: 404,
+            headers: { "Content-Type": "text/html; charset=utf-8", ...corsHeaders() },
+          });
+        }
+        return new Response(row.visual_html as string, {
+          status: 200,
+          headers: {
+            "Content-Type": "text/html; charset=utf-8",
+            "Cache-Control": "public, max-age=3600",
+            ...corsHeaders(),
+          },
+        });
+      } catch (err) {
+        return errorResponse("서버 오류", 500);
+      }
+    }
+
     if (!authenticate(request, env)) {
       return errorResponse("인증 실패", 401);
     }
-
-    const url = new URL(request.url);
-    const path = url.pathname;
 
     try {
       if (path === "/api/articles" && request.method === "POST") return await createArticle(request, env);
