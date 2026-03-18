@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="ko" class="theme-dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AX Research — {{TITLE}}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Noto+Sans+KR:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html.theme-dark {
+      --bg: #0A0A0A; --surface: #141414; --surface-hover: #1C1C1C;
+      --border: rgba(255,255,255,0.06); --text: #EDEDED; --text-secondary: #888;
+      --accent: {{ACCENT}}; --accent-secondary: {{ACCENT2}};
+      --positive: #10b981; --negative: #f43f5e; --warning: #f59e0b;
+    }
+    html.theme-light {
+      --bg: #FAFAF9; --surface: #FFFFFF; --surface-hover: #F5F5F4;
+      --border: rgba(0,0,0,0.08); --text: #0f172a; --text-secondary: #64748b;
+      --accent: {{ACCENT}}; --accent-secondary: {{ACCENT2}};
+      --positive: #059669; --negative: #e11d48; --warning: #d97706;
+    }
+    body {
+      font-family: 'Noto Sans KR', 'Inter', -apple-system, sans-serif;
+      background: var(--bg); color: var(--text);
+      line-height: 1.6; -webkit-font-smoothing: antialiased;
+      letter-spacing: -0.01em; transition: background 0.3s, color 0.3s;
+    }
+    body::before {
+      content: ''; position: fixed; inset: 0; z-index: -1;
+      background: radial-gradient(ellipse 80% 50% at 50% 20%, color-mix(in srgb, var(--accent), transparent 90%), transparent);
+    }
+    h1,h2,h3 { color: var(--text); letter-spacing: -0.03em; line-height: 1.1; text-wrap: balance; }
+    a { color: var(--accent); text-decoration: none; }
+    .container { max-width: 960px; margin: 0 auto; padding: 0 24px; }
+
+    /* === HERO === */
+    .hero { padding: 56px 0 40px; text-align: center; }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 8px 20px; border-radius: 999px; font-size: 13px; font-weight: 600;
+      background: color-mix(in srgb, var(--accent), transparent 85%);
+      border: 1px solid color-mix(in srgb, var(--accent), transparent 65%);
+      color: var(--accent); letter-spacing: 0.02em; margin-bottom: 24px;
+    }
+    .hero-badge svg { width: 14px; height: 14px; }
+    .hero h1 { font-size: clamp(2rem, 5vw, 3rem); font-weight: 800; margin-bottom: 16px; }
+    .hero .summary { font-size: 1.05rem; color: var(--text-secondary); max-width: 640px; margin: 0 auto; line-height: 1.8; }
+    .meta-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; margin-top: 24px; font-size: 13px; color: var(--text-secondary); }
+    .meta-row strong { color: var(--text); font-weight: 600; }
+    .tags { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 16px; }
+    .tag { padding: 4px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; font-size: 12px; font-family: 'Inter', monospace; color: var(--accent); letter-spacing: 0.02em; }
+
+    /* === IMPORTANCE GAUGE === */
+    .gauge-wrap { display: flex; justify-content: center; margin: 32px 0; }
+    .gauge {
+      display: flex; align-items: center; gap: 16px;
+      padding: 16px 32px; background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+    }
+    .gauge-label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-secondary); font-weight: 500; }
+    .gauge-bar { display: flex; gap: 6px; }
+    .gauge-dot {
+      width: 28px; height: 28px; border-radius: 8px;
+      background: var(--surface-hover); border: 1px solid var(--border);
+      transition: all 0.3s;
+    }
+    .gauge-dot.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      box-shadow: 0 0 12px color-mix(in srgb, var(--accent), transparent 50%);
+    }
+    .gauge-score { font-family: 'Inter'; font-size: 2rem; font-weight: 800; color: var(--accent); letter-spacing: -0.04em; line-height: 1; }
+
+    /* === STATS === */
+    .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--border); border-radius: 12px; overflow: hidden; margin-bottom: 48px; border: 1px solid var(--border); }
+    .stat { background: var(--surface); padding: 28px 20px; text-align: center; }
+    .stat-icon { font-size: 24px; margin-bottom: 8px; opacity: 0.7; }
+    .stat-number { font-family: 'Inter'; font-size: 2rem; font-weight: 700; letter-spacing: -0.04em; color: var(--accent); display: block; line-height: 1; margin-bottom: 6px; }
+    .stat-label { font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 500; }
+
+    /* === SECTION === */
+    .section { margin-bottom: 48px; }
+    .section-header {
+      display: flex; align-items: center; gap: 12px;
+      font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.12em;
+      color: var(--text-secondary); margin-bottom: 20px; padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .section-header svg { width: 16px; height: 16px; color: var(--accent); }
+
+    /* === KEY POINTS === */
+    .kp-list { display: flex; flex-direction: column; gap: 12px; }
+    .kp-item {
+      display: flex; gap: 16px; padding: 20px;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+      transition: box-shadow 0.2s;
+    }
+    .kp-item:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.1); }
+    .kp-num {
+      flex-shrink: 0; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
+      background: var(--accent); color: #fff; border-radius: 10px;
+      font-family: 'Inter'; font-size: 15px; font-weight: 700;
+      box-shadow: 0 2px 8px color-mix(in srgb, var(--accent), transparent 60%);
+    }
+    .kp-text { font-size: 15px; line-height: 1.7; flex: 1; }
+
+    /* === ANALYSIS === */
+    .analysis { font-size: 15px; line-height: 1.9; color: var(--text-secondary); column-count: 1; }
+    .analysis p { margin-bottom: 16px; text-indent: 0; }
+    .analysis p:first-child::first-letter {
+      font-size: 3em; font-weight: 800; float: left; line-height: 0.8;
+      margin-right: 8px; margin-top: 4px; color: var(--accent);
+      font-family: 'Inter';
+    }
+
+    /* === AX RELEVANCE === */
+    .ax-card {
+      position: relative; padding: 28px; border-radius: 16px; font-size: 15px; line-height: 1.8; overflow: hidden;
+      background: linear-gradient(135deg, color-mix(in srgb, var(--accent), transparent 92%), color-mix(in srgb, var(--accent-secondary), transparent 92%));
+      border: 1px solid color-mix(in srgb, var(--accent), transparent 75%);
+    }
+    .ax-card::before {
+      content: 'AX'; position: absolute; top: -20px; right: -10px;
+      font-family: 'Inter'; font-size: 120px; font-weight: 900; letter-spacing: -0.05em;
+      color: color-mix(in srgb, var(--accent), transparent 90%); pointer-events: none;
+    }
+    .ax-badge { display: inline-block; padding: 3px 10px; background: var(--accent); color: #fff; border-radius: 6px; font-family: 'Inter'; font-size: 11px; font-weight: 800; letter-spacing: 0.08em; margin-bottom: 12px; }
+
+    /* === ACTION ITEMS === */
+    .action-list { display: flex; flex-direction: column; gap: 10px; }
+    .action-item {
+      display: flex; align-items: center; gap: 14px; padding: 16px 20px;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+      font-size: 14px; transition: box-shadow 0.2s;
+    }
+    .action-item:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.1); }
+    .action-check {
+      flex-shrink: 0; width: 22px; height: 22px; border-radius: 6px;
+      border: 2px solid var(--accent); position: relative;
+    }
+    .action-check::after {
+      content: ''; position: absolute; top: 3px; left: 6px;
+      width: 5px; height: 10px; border: 2px solid var(--accent);
+      border-top: none; border-left: none; transform: rotate(45deg); opacity: 0.3;
+    }
+
+    /* === FOOTER === */
+    .footer { text-align: center; padding: 32px 0; margin-top: 48px; border-top: 1px solid var(--border); }
+    .footer a { color: var(--accent); font-weight: 500; }
+    .footer-meta { font-size: 12px; color: var(--text-secondary); margin-top: 8px; }
+
+    /* === ANIMATIONS === */
+    @keyframes fadeInUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
+    .animate { animation: fadeInUp 0.6s ease-out both; }
+    .animate.d1 { animation-delay: 0.1s; } .animate.d2 { animation-delay: 0.2s; }
+    .animate.d3 { animation-delay: 0.3s; } .animate.d4 { animation-delay: 0.4s; }
+    [data-reveal] { opacity: 0; transform: translateY(24px); transition: opacity 0.6s ease, transform 0.6s ease; }
+    [data-reveal].visible { opacity: 1; transform: translateY(0); }
+
+    /* === MENU === */
+    .viz-menu { position: fixed; top: 16px; right: 16px; z-index: 9999; }
+    .viz-menu-toggle { width: 44px; height: 44px; border-radius: 12px; background: var(--surface); border: 1px solid var(--border); color: var(--text); cursor: pointer; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(12px); }
+    .viz-menu-toggle:hover { background: var(--surface-hover); }
+    .viz-menu-dropdown { position: absolute; top: 52px; right: 0; min-width: 200px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 8px; opacity: 0; visibility: hidden; transform: translateY(-8px); transition: all 0.2s; }
+    .viz-menu-dropdown.open { opacity: 1; visibility: visible; transform: translateY(0); }
+    .viz-menu-dropdown button { width: 100%; padding: 10px 14px; border: none; border-radius: 8px; background: transparent; color: var(--text); font-size: 14px; font-family: inherit; cursor: pointer; text-align: left; display: flex; align-items: center; gap: 10px; }
+    .viz-menu-dropdown button:hover { background: var(--surface-hover); }
+
+    @media print { body { background: #fff !important; color: #000 !important; } .viz-menu { display: none !important; } [data-reveal] { opacity: 1 !important; transform: none !important; } * { print-color-adjust: exact; -webkit-print-color-adjust: exact; } }
+    @media (max-width: 640px) { .container { padding: 0 16px; } .stats { grid-template-columns: 1fr; } .hero h1 { font-size: 1.6rem; } .gauge { padding: 12px 20px; } .analysis p:first-child::first-letter { font-size: 2em; } }
+  </style>
+</head>
+<body>
+  <div class="viz-menu">
+    <button class="viz-menu-toggle" onclick="toggleMenu()" aria-label="Menu">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="5" x2="17" y2="5"/><line x1="3" y1="10" x2="17" y2="10"/><line x1="3" y1="15" x2="17" y2="15"/></svg>
+    </button>
+    <div class="viz-menu-dropdown" id="vizMenuDropdown">
+      <button onclick="cycleTheme()"><span id="themeIcon">🌙</span><span id="themeLabel">Dark</span></button>
+      <button onclick="downloadImage()"><span>📥</span><span>PNG 다운로드</span></button>
+      <button onclick="window.print()"><span>🖨️</span><span>인쇄 / PDF</span></button>
+    </div>
+  </div>
+
+  <main id="main-content">
+    <div class="container">
+
+      <header class="hero animate">
+        <div class="hero-badge">
+          <svg viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="8" r="4"/></svg>
+          {{CATEGORY_LABEL}} · {{SOURCE_TYPE}}
+        </div>
+        <h1>{{TITLE}}</h1>
+        <p class="summary">{{SUMMARY}}</p>
+        <div class="meta-row">
+          <span>by <strong>{{AUTHOR}}</strong></span>
+          <span>{{DATE}}</span>
+        </div>
+        <div class="tags">{{TAGS}}</div>
+      </header>
+
+      <div class="gauge-wrap animate d1">
+        <div class="gauge">
+          <div>
+            <div class="gauge-label">중요도</div>
+            <div class="gauge-bar">
+              <div class="gauge-dot active"></div>
+              <div class="gauge-dot active"></div>
+              <div class="gauge-dot active"></div>
+              <div class="gauge-dot active"></div>
+              <div class="gauge-dot"></div>
+            </div>
+          </div>
+          <div class="gauge-score">{{IMPORTANCE}}<span style="font-size:0.5em;color:var(--text-secondary)">/5</span></div>
+        </div>
+      </div>
+
+      <section class="stats animate d2" role="region">
+        <div class="stat">
+          <div class="stat-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V10M18 20V4M6 20v-4"/></svg></div>
+          <span class="stat-number" data-count="{{IMPORTANCE}}">{{IMPORTANCE}}</span>
+          <span class="stat-label">중요도</span>
+        </div>
+        <div class="stat">
+          <div class="stat-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></div>
+          <span class="stat-number">{{KP_COUNT}}</span>
+          <span class="stat-label">핵심 포인트</span>
+        </div>
+        <div class="stat">
+          <div class="stat-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></div>
+          <span class="stat-number">{{ACTION_COUNT}}</span>
+          <span class="stat-label">액션 아이템</span>
+        </div>
+      </section>
+
+      <section class="section" data-reveal>
+        <div class="section-header">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
+          핵심 내용
+        </div>
+        <div class="kp-list">
+{{KEY_POINTS}}
+        </div>
+      </section>
+
+      <section class="section" data-reveal>
+        <div class="section-header">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+          상세 분석
+        </div>
+        <div class="analysis">
+{{ANALYSIS}}
+        </div>
+      </section>
+
+      <section class="section" data-reveal>
+        <div class="section-header">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+          AX 관련성
+        </div>
+        <div class="ax-card">
+          <div class="ax-badge">AX RESEARCH</div>
+          <p>{{AX_RELEVANCE}}</p>
+        </div>
+      </section>
+
+      <section class="section" data-reveal>
+        <div class="section-header">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>
+          액션 아이템
+        </div>
+        <div class="action-list">
+{{ACTION_ITEMS}}
+        </div>
+      </section>
+
+      <footer class="footer" data-reveal>
+        <a href="{{SOURCE_URL}}">원문 보기 →</a>
+        <div class="footer-meta">AX Research · {{ANALYZED_DATE}} · {{IMPORTANCE_STARS}}</div>
+      </footer>
+
+    </div>
+  </main>
+
+  <script>
+    function toggleMenu() { document.getElementById('vizMenuDropdown').classList.toggle('open'); }
+    document.addEventListener('click', function(e) { if (!e.target.closest('.viz-menu')) document.getElementById('vizMenuDropdown').classList.remove('open'); });
+
+    var savedTheme = localStorage.getItem('viz-theme');
+    var currentTheme = savedTheme || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+    function applyTheme(t) {
+      document.documentElement.className = 'theme-' + t;
+      document.getElementById('themeIcon').textContent = t === 'dark' ? '🌙' : '☀️';
+      document.getElementById('themeLabel').textContent = t === 'dark' ? 'Dark' : 'Light';
+      localStorage.setItem('viz-theme', t); currentTheme = t;
+    }
+    function cycleTheme() { applyTheme(currentTheme === 'dark' ? 'light' : 'dark'); }
+    applyTheme(currentTheme);
+
+    document.querySelectorAll('[data-reveal]').forEach(function(el) {
+      var ro = new IntersectionObserver(function(entries) { entries.forEach(function(e) { if (e.isIntersecting) { e.target.classList.add('visible'); ro.unobserve(e.target); } }); }, { threshold: 0.1 });
+      ro.observe(el);
+    });
+    setTimeout(function() { document.querySelectorAll('[data-reveal]').forEach(function(el) { el.classList.add('visible'); }); }, 600);
+
+    var ce = document.querySelector('[data-count]');
+    if (ce) {
+      var co = new IntersectionObserver(function(es) { es.forEach(function(e) { if (e.isIntersecting) {
+        document.querySelectorAll('[data-count]').forEach(function(el) {
+          if (el.dataset.counted) return; el.dataset.counted = '1';
+          var target = parseFloat(el.dataset.count), suffix = el.dataset.suffix || '';
+          var start = performance.now();
+          (function tick(now) { var p = Math.min((now - start) / 800, 1); el.textContent = Math.round(target * (1 - Math.pow(1 - p, 3))) + suffix; if (p < 1) requestAnimationFrame(tick); })(start);
+        });
+        co.disconnect();
+      }}); }, { threshold: 0.3 });
+      co.observe(ce);
+    }
+
+    async function downloadImage() {
+      var m = document.querySelector('.viz-menu'); m.style.display = 'none';
+      try { var url = await htmlToImage.toPng(document.body, { quality: 1, pixelRatio: 2, filter: function(n) { return !n.classList || !n.classList.contains('viz-menu'); } }); var a = document.createElement('a'); a.href = url; a.download = document.title.replace(/\s+/g, '-').toLowerCase() + '.png'; a.click(); } catch(e) { console.error(e); }
+      m.style.display = '';
+    }
+  </script>
+</body>
+</html>
