@@ -160,8 +160,6 @@ function tryReadJson() {
 
 function tryReadHtml() {
   try {
-    var stat = statSync(HTML_FILE);
-    if (stat.mtimeMs < htmlTimestampAtJsonDetect) return null;
     var raw = readFileSync(HTML_FILE, "utf-8");
     if (raw.length < 500) return null;
     return raw;
@@ -204,32 +202,38 @@ function onJsonDetected() {
 }
 
 function onHtmlDetected() {
-  if (!pendingJson) return;
   var html = tryReadHtml();
   if (!html) return;
 
   console.log("[HTML] 시각화 감지 (" + (html.length / 1024).toFixed(1) + "KB)");
 
-  // 타이머 취소, 바로 전송
-  if (pendingTimer) clearTimeout(pendingTimer);
-  lastSentContent = lastJsonContent;
+  if (pendingJson) {
+    // JSON 대기 중이면 타이머 취소하고 합쳐서 전송
+    if (pendingTimer) clearTimeout(pendingTimer);
+    lastSentContent = lastJsonContent;
 
-  (async function() {
-    var result = await sendToApi(pendingJson, html);
-
-    if (html && result) {
-      try {
-        await screenshotHtml(HTML_FILE);
-        await sendImageToDiscord(PNG_FILE, pendingJson.title, pendingJson.category, result.visualUrl);
-      } catch (err) {
-        console.log("[ERROR] PNG/Discord: " + err.message);
+    (async function() {
+      var result = await sendToApi(pendingJson, html);
+      if (result) {
+        try { await screenshotHtml(HTML_FILE); await sendImageToDiscord(PNG_FILE, pendingJson.title, pendingJson.category, result.visualUrl); } catch (err) { console.log("[ERROR] PNG/Discord: " + err.message); }
       }
-    }
-
-    console.log("[DONE] 완료!\n");
-    pendingJson = null;
-    pendingTimer = null;
-  })();
+      console.log("[DONE] 완료!\n");
+      pendingJson = null; pendingTimer = null;
+    })();
+  } else {
+    // JSON이 이미 전송된 후 HTML이 늦게 온 경우 → PNG만 Discord에 전송
+    (async function() {
+      try {
+        var jsonData = JSON.parse(readFileSync(JSON_FILE, "utf-8"));
+        console.log("  늦게 도착한 HTML → PNG + Discord 전송");
+        await screenshotHtml(HTML_FILE);
+        await sendImageToDiscord(PNG_FILE, jsonData.title, jsonData.category, null);
+      } catch (err) {
+        console.log("[ERROR] 늦은 HTML 처리: " + err.message);
+      }
+      console.log("[DONE] 완료!\n");
+    })();
+  }
 }
 
 // 감시
