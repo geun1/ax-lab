@@ -42,10 +42,11 @@ if (!existsSync(OUTPUT_DIR)) mkdirSync(OUTPUT_DIR, { recursive: true });
 
 var lastJsonContent = "";
 var lastSentContent = "";
+var lastHtmlContent = "";
 var pendingJson = null;
 var pendingTimer = null;
-var htmlTimestampAtJsonDetect = 0;
-var WAIT_FOR_HTML_MS = 15000; // HTML 생성에 시간이 걸리므로 15초 대기
+var htmlProcessing = false;
+var WAIT_FOR_HTML_MS = 15000;
 
 console.log(`
 ╔════════════════════════════════════════════════════╗
@@ -204,11 +205,14 @@ function onJsonDetected() {
 function onHtmlDetected() {
   var html = tryReadHtml();
   if (!html) return;
+  // 중복 방지: 같은 내용이거나 이미 처리 중이면 무시
+  if (html === lastHtmlContent || htmlProcessing) return;
+  lastHtmlContent = html;
+  htmlProcessing = true;
 
   console.log("[HTML] 시각화 감지 (" + (html.length / 1024).toFixed(1) + "KB)");
 
   if (pendingJson) {
-    // JSON 대기 중이면 타이머 취소하고 합쳐서 전송
     if (pendingTimer) clearTimeout(pendingTimer);
     lastSentContent = lastJsonContent;
 
@@ -218,10 +222,9 @@ function onHtmlDetected() {
         try { await screenshotHtml(HTML_FILE); await sendImageToDiscord(PNG_FILE, pendingJson.title, pendingJson.category, result.visualUrl); } catch (err) { console.log("[ERROR] PNG/Discord: " + err.message); }
       }
       console.log("[DONE] 완료!\n");
-      pendingJson = null; pendingTimer = null;
+      pendingJson = null; pendingTimer = null; htmlProcessing = false;
     })();
   } else {
-    // JSON이 이미 전송된 후 HTML이 늦게 온 경우 → PNG만 Discord에 전송
     (async function() {
       try {
         var jsonData = JSON.parse(readFileSync(JSON_FILE, "utf-8"));
@@ -232,6 +235,7 @@ function onHtmlDetected() {
         console.log("[ERROR] 늦은 HTML 처리: " + err.message);
       }
       console.log("[DONE] 완료!\n");
+      htmlProcessing = false;
     })();
   }
 }
