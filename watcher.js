@@ -10,7 +10,7 @@
  * API가 DB + Discord embed + HTML 시각화 서빙 모두 처리
  */
 
-import { watch, readFileSync, existsSync, mkdirSync } from "fs";
+import { watch, readFileSync, existsSync, mkdirSync, statSync } from "fs";
 import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";
 
@@ -77,10 +77,15 @@ function tryReadJson() {
   } catch { return null; }
 }
 
+var htmlTimestampAtJsonDetect = 0;
+
 function tryReadHtml() {
   try {
+    var stat = statSync(HTML_FILE);
+    // JSON 감지 시점 이전에 만들어진 HTML은 무시 (오래된 파일 방지)
+    if (stat.mtimeMs < htmlTimestampAtJsonDetect) return null;
     var raw = readFileSync(HTML_FILE, "utf-8");
-    if (raw.length < 200) return null; // 불완전한 파일
+    if (raw.length < 500) return null; // 불완전한 파일
     return raw;
   } catch { return null; }
 }
@@ -92,6 +97,7 @@ function onJsonDetected() {
   console.log(`[JSON] 아티클 감지: "${data.title}"`);
   console.log(`  HTML 시각화 파일 대기 중 (${WAIT_FOR_HTML_MS / 1000}초)...`);
 
+  htmlTimestampAtJsonDetect = Date.now();
   pendingJson = data;
 
   // 기존 타이머 취소
