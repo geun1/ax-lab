@@ -230,6 +230,13 @@ async function createArticle(request: Request, env: Env): Promise<Response> {
     return errorResponse("title, category, summary는 필수입니다.");
   }
 
+  // 허용되지 않는 source_type/category 자동 보정
+  const VALID_SOURCE_TYPES = ["blog", "article", "youtube", "paper", "tweet", "other"];
+  const VALID_CATEGORIES = ["ai-research", "ai-product", "ai-industry", "dev-tool", "crypto-web3", "startup", "design", "general"];
+  if (!VALID_SOURCE_TYPES.includes(body.source_type)) body.source_type = "other";
+  if (!VALID_CATEGORIES.includes(body.category)) body.category = "general";
+  if (!body.importance || body.importance < 1 || body.importance > 5) body.importance = 3;
+
   const id = generateId();
 
   // 1. D1에 저장
