@@ -6,450 +6,142 @@ allowed-tools: Read, Write, Bash, Glob
 
 # AX 아티클 시각화
 
-아티클 분석 결과 JSON을 읽어 **단일 HTML 인포그래픽 파일**로 시각화합니다.
-생성된 HTML은 `output/` 디렉토리에 저장되며, Watcher가 자동으로 Discord에 전송합니다.
+아티클 분석 결과 JSON을 읽어 **visualize 플러그인과 동일한 품질의 HTML 인포그래픽**을 생성합니다.
 
 ## 입력
 
 `$ARGUMENTS`
 
-입력이 없으면 `output/ax-article-result.json` 을 읽습니다.
-파일 경로가 주어지면 해당 JSON을 읽습니다.
+입력이 없으면 `output/ax-article-result.json`을 읽습니다.
 
 ## 절차
 
-1. **Read** 도구로 `/Users/song/Desktop/geun1/ax_research/ax-lab/output/ax-article-result.json` 읽기
-2. JSON 데이터를 기반으로 아래 HTML 템플릿에 콘텐츠를 채워 인포그래픽 생성
-3. **Write** 도구로 `/Users/song/Desktop/geun1/ax_research/ax-lab/output/ax-article-visual.html` 에 저장
-4. **Bash** 도구로 `open /Users/song/Desktop/geun1/ax_research/ax-lab/output/ax-article-visual.html` 실행
+1. **Read**로 `/Users/song/Desktop/geun1/ax_research/ax-lab/output/ax-article-result.json` 읽기
+2. **Read**로 이 스킬 디렉토리의 `skeleton.md` 읽기 — **반드시 이 skeleton을 기반으로 시작**
+3. JSON 데이터를 skeleton에 채워 인포그래픽 HTML 생성
+4. **Write**로 `/Users/song/Desktop/geun1/ax_research/ax-lab/output/ax-article-visual.html` 저장
 
-## HTML 템플릿 — 반드시 이 구조를 따르세요
+## 핵심 규칙 (visualize 플러그인과 동일)
 
+### 반드시 skeleton.md에서 시작
+```
+Read: /Users/song/Desktop/geun1/ax_research/ax-lab/ax-article/skills/ax-visualize/skeleton.md
+```
+skeleton의 전체 HTML을 복사한 뒤 콘텐츠를 추가합니다. **절대 처음부터 새로 작성하지 마세요.**
+
+### CSS Custom Properties (이름 변경 금지)
+`--bg, --surface, --surface-hover, --border, --text, --text-secondary, --accent, --accent-secondary, --positive, --negative, --warning`
+
+### class 기반 테마만 사용
+`html.theme-dark` / `html.theme-light` — `@media (prefers-color-scheme)` 절대 금지
+
+### 한국어 폰트
 ```html
-<!DOCTYPE html>
-<html lang="ko" class="theme-dark">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AX Research — ARTICLE_TITLE</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.js"></script>
-  <style>
-    /* ===== THEME VARIABLES (이름 변경 금지) ===== */
-    html.theme-dark {
-      --bg: #0A0A0A;
-      --surface: #141414;
-      --surface-hover: #1C1C1C;
-      --border: rgba(255,255,255,0.06);
-      --text: #EDEDED;
-      --text-secondary: #888;
-      --accent: #3b82f6;
-      --accent-secondary: #8b5cf6;
-      --positive: #10b981;
-      --negative: #f43f5e;
-      --warning: #f59e0b;
-    }
-    html.theme-light {
-      --bg: #FAFAFA;
-      --surface: #FFFFFF;
-      --surface-hover: #F5F5F5;
-      --border: rgba(0,0,0,0.06);
-      --text: #0f172a;
-      --text-secondary: #64748b;
-      --accent: #2563eb;
-      --accent-secondary: #7c3aed;
-      --positive: #059669;
-      --negative: #e11d48;
-      --warning: #d97706;
-    }
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+```
+`font-family: 'Noto Sans KR', 'Inter', sans-serif;`
+`<html lang="ko">`
 
-    /* ===== RESET & BASE ===== */
-    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: 'Noto Sans KR', 'Inter', system-ui, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      line-height: 1.7;
-      -webkit-font-smoothing: antialiased;
-    }
+### JS는 var만 사용 (let/const 금지 — TDZ 방지)
 
-    /* ===== LAYOUT ===== */
-    .container { max-width: 960px; margin: 0 auto; padding: 48px 24px 64px; }
+### hover는 shadow만 (translateY, scale 금지)
 
-    /* ===== HERO ===== */
-    .hero {
-      text-align: center;
-      padding: 64px 0 48px;
-      border-bottom: 1px solid var(--border);
-      margin-bottom: 48px;
-    }
-    .hero-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 6px 16px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 999px;
-      font-size: 13px;
-      color: var(--text-secondary);
-      margin-bottom: 24px;
-    }
-    .hero-badge .dot {
-      width: 8px; height: 8px;
-      border-radius: 50%;
-      background: var(--accent);
-    }
-    .hero h1 {
-      font-family: 'Inter', sans-serif;
-      font-size: clamp(28px, 5vw, 42px);
-      font-weight: 800;
-      letter-spacing: -0.03em;
-      line-height: 1.2;
-      margin-bottom: 16px;
-    }
-    .hero .summary {
-      font-size: 17px;
-      color: var(--text-secondary);
-      max-width: 640px;
-      margin: 0 auto;
-      line-height: 1.8;
-    }
+### 아이콘은 inline SVG (이모지 금지)
 
-    /* ===== META BAR ===== */
-    .meta-bar {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 24px;
-      margin-top: 32px;
-    }
-    .meta-item {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 14px;
-      color: var(--text-secondary);
-    }
-    .meta-item strong { color: var(--text); font-weight: 600; }
+### 인포그래픽 구조 — 아티클 분석 결과용
 
-    /* ===== IMPORTANCE INDICATOR ===== */
-    .importance {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      padding: 4px 12px;
-      border-radius: 8px;
-      font-size: 14px;
-      font-weight: 600;
-    }
-    .importance-5 { background: rgba(244,63,94,0.12); color: var(--negative); }
-    .importance-4 { background: rgba(245,158,11,0.12); color: var(--warning); }
-    .importance-3 { background: rgba(59,130,246,0.12); color: var(--accent); }
-    .importance-2 { background: rgba(16,185,129,0.12); color: var(--positive); }
-    .importance-1 { background: var(--surface); color: var(--text-secondary); }
+skeleton의 `<main>` 안에 아래 구조로 콘텐츠를 배치합니다:
 
-    /* ===== TAGS ===== */
-    .tags { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 20px; }
-    .tag {
-      padding: 4px 12px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      font-size: 13px;
-      font-family: 'Inter', monospace;
-      color: var(--accent);
-    }
+#### 1. Hero 섹션
+- 카테고리 뱃지 (pill shape, accent 배경)
+- 아티클 제목 (h1, `letter-spacing: -0.03em`, `font-weight: 700`)
+- 한줄 요약 (text-secondary)
+- 메타 정보 바: 저자 · 발행일 · 소스타입
 
-    /* ===== SECTION ===== */
-    .section { margin-bottom: 48px; }
-    .section-title {
-      font-family: 'Inter', sans-serif;
-      font-size: 13px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--accent);
-      margin-bottom: 24px;
-      padding-bottom: 12px;
-      border-bottom: 1px solid var(--border);
-    }
+#### 2. Stats 바 (4칸 그리드)
+- 중요도 (⭐ data-count 사용)
+- 핵심 포인트 수
+- 액션 아이템 수
+- 카테고리
 
-    /* ===== KEY POINTS ===== */
-    .key-points { display: flex; flex-direction: column; gap: 16px; }
-    .key-point {
-      display: flex;
-      gap: 16px;
-      padding: 20px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      transition: box-shadow 0.2s ease;
-    }
-    .key-point:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
-    .key-point-num {
-      flex-shrink: 0;
-      width: 32px; height: 32px;
-      display: flex; align-items: center; justify-content: center;
-      background: var(--accent);
-      color: #fff;
-      border-radius: 8px;
-      font-family: 'Inter', sans-serif;
-      font-size: 14px;
-      font-weight: 700;
-    }
-    .key-point-text { font-size: 15px; line-height: 1.7; }
+#### 3. Key Points 섹션
+- 각 포인트를 카드로 표시 (`.card` 클래스 사용)
+- 왼쪽에 번호 accent 원형 뱃지
+- `data-reveal` 속성으로 스크롤 애니메이션
 
-    /* ===== ANALYSIS ===== */
-    .analysis {
-      font-size: 15px;
-      line-height: 1.9;
-      color: var(--text-secondary);
-    }
-    .analysis p { margin-bottom: 16px; }
+#### 4. 상세 분석 섹션
+- 문단별 `<p>` 태그
+- `data-reveal`
 
-    /* ===== AX RELEVANCE ===== */
-    .ax-relevance {
-      padding: 24px;
-      background: linear-gradient(135deg, rgba(59,130,246,0.06), rgba(139,92,246,0.06));
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      font-size: 15px;
-      line-height: 1.8;
-    }
-    .ax-relevance::before {
-      content: 'AX';
-      display: inline-block;
-      padding: 2px 8px;
-      background: var(--accent);
-      color: #fff;
-      border-radius: 4px;
-      font-family: 'Inter', sans-serif;
-      font-size: 12px;
-      font-weight: 800;
-      letter-spacing: 0.05em;
-      margin-bottom: 12px;
-    }
+#### 5. AX 관련성 섹션
+- accent 그라데이션 배경 카드
+- AX 로고/뱃지
 
-    /* ===== ACTION ITEMS ===== */
-    .action-items { display: flex; flex-direction: column; gap: 12px; }
-    .action-item {
-      display: flex;
-      align-items: flex-start;
-      gap: 12px;
-      padding: 16px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      font-size: 14px;
-    }
-    .action-check {
-      flex-shrink: 0;
-      width: 20px; height: 20px;
-      border: 2px solid var(--border);
-      border-radius: 4px;
-      margin-top: 1px;
-    }
+#### 6. 액션 아이템 섹션
+- 체크박스 스타일 리스트
 
-    /* ===== FOOTER ===== */
-    .footer {
-      text-align: center;
-      padding: 32px 0;
-      margin-top: 48px;
-      border-top: 1px solid var(--border);
-      font-size: 13px;
-      color: var(--text-secondary);
-    }
+#### 7. 태그 + 소스 링크 푸터
 
-    /* ===== MENU ===== */
-    .viz-menu { position: fixed; top: 16px; right: 16px; z-index: 1000; }
-    .viz-menu-toggle {
-      width: 40px; height: 40px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      color: var(--text);
-      font-size: 18px;
-      cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
-    }
-    .viz-menu-dropdown {
-      display: none;
-      position: absolute;
-      top: 48px; right: 0;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 8px;
-      min-width: 180px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.12);
-    }
-    .viz-menu-dropdown.open { display: block; }
-    .viz-menu-dropdown button {
-      display: flex; align-items: center; gap: 10px;
-      width: 100%;
-      padding: 10px 12px;
-      background: none;
-      border: none;
-      border-radius: 8px;
-      color: var(--text);
-      font-size: 14px;
-      cursor: pointer;
-    }
-    .viz-menu-dropdown button:hover { background: var(--surface-hover); }
-
-    /* ===== ANIMATIONS ===== */
-    @keyframes fadeInUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
-    .reveal { opacity: 0; transform: translateY(24px); transition: opacity 0.6s ease, transform 0.6s ease; }
-    .reveal.visible { opacity: 1; transform: translateY(0); }
-
-    /* ===== RESPONSIVE ===== */
-    @media (max-width: 768px) {
-      .container { padding: 32px 16px 48px; }
-      .hero { padding: 40px 0 32px; }
-      .meta-bar { gap: 16px; }
-      .key-point { padding: 16px; }
-    }
-
-    /* ===== PRINT ===== */
-    @media print {
-      body { background: white !important; color: black !important; }
-      .viz-menu { display: none !important; }
-      .key-point, .action-item, .ax-relevance { break-inside: avoid; border: 1px solid #ddd; box-shadow: none; }
-      * { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
-    }
-  </style>
-</head>
-<body>
-  <!-- MENU -->
-  <div class="viz-menu">
-    <button class="viz-menu-toggle" onclick="toggleMenu()">☰</button>
-    <div class="viz-menu-dropdown" id="vizMenuDropdown">
-      <button onclick="cycleTheme()"><span>🌓</span><span id="themeLabel">테마 전환</span></button>
-      <button onclick="downloadImage()"><span>📥</span><span>PNG 다운로드</span></button>
-      <button onclick="window.print()"><span>🖨️</span><span>인쇄 / PDF</span></button>
-    </div>
-  </div>
-
-  <div class="container">
-    <!-- HERO -->
-    <div class="hero reveal">
-      <div class="hero-badge"><span class="dot"></span> CATEGORY_LABEL • SOURCE_TYPE_LABEL</div>
-      <h1>ARTICLE_TITLE</h1>
-      <p class="summary">ARTICLE_SUMMARY</p>
-      <div class="meta-bar">
-        <div class="meta-item">✍️ <strong>AUTHOR</strong></div>
-        <div class="meta-item">📅 <strong>PUBLISHED_DATE</strong></div>
-        <div class="meta-item"><span class="importance importance-N">⭐ 중요도 N/5</span></div>
-      </div>
-      <div class="tags">
-        <!-- TAG badges here -->
-      </div>
-    </div>
-
-    <!-- KEY POINTS -->
-    <div class="section reveal">
-      <div class="section-title">핵심 내용</div>
-      <div class="key-points">
-        <!-- Repeat for each key_point:
-        <div class="key-point">
-          <div class="key-point-num">1</div>
-          <div class="key-point-text">KEY_POINT_TEXT</div>
-        </div>
-        -->
-      </div>
-    </div>
-
-    <!-- DETAILED ANALYSIS -->
-    <div class="section reveal">
-      <div class="section-title">상세 분석</div>
-      <div class="analysis">
-        <!-- Split detailed_analysis into <p> paragraphs -->
-      </div>
-    </div>
-
-    <!-- AX RELEVANCE -->
-    <div class="section reveal">
-      <div class="section-title">AX 관련성</div>
-      <div class="ax-relevance">
-        AX_RELEVANCE_TEXT
-      </div>
-    </div>
-
-    <!-- ACTION ITEMS -->
-    <div class="section reveal">
-      <div class="section-title">액션 아이템</div>
-      <div class="action-items">
-        <!-- Repeat for each action_item:
-        <div class="action-item">
-          <div class="action-check"></div>
-          <span>ACTION_ITEM_TEXT</span>
-        </div>
-        -->
-      </div>
-    </div>
-
-    <!-- FOOTER -->
-    <div class="footer">
-      AX Research • 분석일: ANALYZED_DATE • SOURCE_URL
-    </div>
-  </div>
-
-  <script>
-    // Theme
-    var savedTheme = localStorage.getItem('viz-theme');
-    var currentTheme = savedTheme || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
-    function applyTheme(t) {
-      document.documentElement.className = 'theme-' + t;
-      localStorage.setItem('viz-theme', t);
-      currentTheme = t;
-    }
-    function cycleTheme() { applyTheme(currentTheme === 'dark' ? 'light' : 'dark'); }
-    applyTheme(currentTheme);
-
-    // Menu
-    function toggleMenu() {
-      document.getElementById('vizMenuDropdown').classList.toggle('open');
-    }
-    document.addEventListener('click', function(e) {
-      if (!e.target.closest('.viz-menu')) document.getElementById('vizMenuDropdown').classList.remove('open');
-    });
-
-    // PNG Download
-    async function downloadImage() {
-      var menu = document.querySelector('.viz-menu');
-      menu.style.display = 'none';
-      try {
-        var url = await htmlToImage.toPng(document.body, { quality: 1, pixelRatio: 2, filter: function(n) { return !n.classList || !n.classList.contains('viz-menu'); } });
-        var a = document.createElement('a');
-        a.href = url;
-        a.download = document.title.replace(/\s+/g, '-').toLowerCase() + '.png';
-        a.click();
-      } catch(e) { console.error(e); }
-      menu.style.display = '';
-    }
-
-    // Scroll reveal
-    var revealObserver = new IntersectionObserver(function(entries) {
-      entries.forEach(function(en) {
-        if (en.isIntersecting) { en.target.classList.add('visible'); revealObserver.unobserve(en.target); }
-      });
-    }, { threshold: 0.15 });
-    document.querySelectorAll('.reveal').forEach(function(el) { revealObserver.observe(el); });
-  </script>
-</body>
-</html>
+### 디자인 시스템 참고
+더 상세한 디자인 가이드가 필요하면:
+```
+Read: /Users/song/Desktop/geun1/ax_research/ax-lab/ax-article/skills/ax-visualize/design-system.md
 ```
 
-## 규칙
+### Typography
+- Hero h1: `clamp(2.5rem, 6vw, 3.5rem)`, `font-weight: 700`, `letter-spacing: -0.03em`
+- Section titles: `font-size: 0.6875rem`, `text-transform: uppercase`, `letter-spacing: 0.1em`, `font-weight: 500`, `color: var(--text-secondary)`
+- Body: `font-size: 1rem`, `line-height: 1.7`
 
-- JSON의 모든 값을 HTML 템플릿의 해당 위치에 채워넣습니다
-- **CSS Custom Property 이름은 절대 변경하지 마세요** (--bg, --surface, --text 등)
-- `class="theme-dark"` 기반 테마만 사용 (`@media (prefers-color-scheme)` 금지)
-- 모든 CSS/JS는 인라인 (외부 파일 없음, CDN 폰트/라이브러리만 예외)
-- `var` 키워드만 사용 (let/const 금지 — TDZ 에러 방지)
-- hover 시 shadow만 사용 (translateY, scale 금지)
-- 카테고리별 accent 색상: ai-research=#3b82f6, ai-product=#8b5cf6, ai-industry=#f59e0b, dev-tool=#10b981, crypto-web3=#f43f5e, startup=#f97316, design=#ec4899, general=#6b7280
-- detailed_analysis는 `\n\n`으로 문단 분리하여 `<p>` 태그로 감쌈
-- 파일명은 반드시 `ax-article-visual.html`
+### Spacing (8px 그리드)
+4, 8, 12, 16, 24, 32, 48, 64, 96px
+
+### 배경
+```css
+body::before {
+  content: ''; position: fixed; inset: 0; z-index: -1;
+  background: radial-gradient(ellipse 80% 50% at 50% 20%,
+    color-mix(in srgb, var(--accent), transparent 92%), transparent);
+}
+```
+
+### Stats 그리드 (ai-timeline 예시 참고)
+```css
+.stats {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 1px; background: var(--border);
+  border-radius: 12px; overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.stat { background: var(--surface); padding: 32px 24px; text-align: center; }
+.stat-number { font-size: 2.5rem; font-weight: 700; letter-spacing: -0.04em; color: var(--accent); }
+.stat-label { font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-secondary); font-weight: 500; }
+```
+
+### 카테고리별 accent 색상
+```
+ai-research: --accent: #3b82f6;  --accent-secondary: #2563eb;
+ai-product:  --accent: #8b5cf6;  --accent-secondary: #7c3aed;
+ai-industry: --accent: #f59e0b;  --accent-secondary: #d97706;
+dev-tool:    --accent: #10b981;  --accent-secondary: #059669;
+crypto-web3: --accent: #f43f5e;  --accent-secondary: #e11d48;
+startup:     --accent: #f97316;  --accent-secondary: #ea580c;
+design:      --accent: #ec4899;  --accent-secondary: #db2777;
+general:     --accent: #6b7280;  --accent-secondary: #4b5563;
+```
+JSON의 `category`에 따라 `html.theme-dark`와 `html.theme-light`의 `--accent`, `--accent-secondary` 값을 변경하세요.
+
+### 반응형
+```css
+@media (max-width: 640px) {
+  .stats { grid-template-columns: repeat(2, 1fr); }
+}
+```
+
+### 파일명
+반드시 `ax-article-visual.html`
+
+### 파일 저장 후
+```bash
+open /Users/song/Desktop/geun1/ax_research/ax-lab/output/ax-article-visual.html
+```
