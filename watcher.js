@@ -181,18 +181,19 @@ function onJsonDetected() {
     if (!pendingJson) return;
     var html = tryReadHtml();
     lastSentContent = lastJsonContent;
+    if (html) lastHtmlContent = html; // 중복 전송 방지
 
-    // API 전송
     var result = await sendToApi(pendingJson, html);
 
-    // HTML이 있으면 PNG 스크린샷 → Discord 이미지 전송
     if (html && result) {
+      htmlProcessing = true;
       try {
         await screenshotHtml(HTML_FILE);
         await sendImageToDiscord(PNG_FILE, pendingJson.title, pendingJson.category, result.visualUrl);
       } catch (err) {
         console.log("[ERROR] PNG/Discord: " + err.message);
       }
+      htmlProcessing = false;
     }
 
     console.log("[DONE] 완료!\n");
