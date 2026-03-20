@@ -174,7 +174,6 @@ function onJsonDetected() {
   console.log("[JSON] 아티클 감지: \"" + data.title + "\"");
   console.log("  HTML 대기 중 (" + (WAIT_FOR_HTML_MS / 1000) + "초)...");
 
-  htmlTimestampAtJsonDetect = Date.now();
   pendingJson = data;
 
   if (pendingTimer) clearTimeout(pendingTimer);
