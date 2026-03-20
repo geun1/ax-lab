@@ -159,10 +159,18 @@ function tryReadJson() {
   } catch { return null; }
 }
 
-function tryReadHtml() {
+function tryReadHtml(expectedTitle) {
   try {
     var raw = readFileSync(HTML_FILE, "utf-8");
     if (raw.length < 500) return null;
+    // HTML의 <title> 또는 <h1>에 현재 아티클 제목이 포함되어 있는지 확인
+    if (expectedTitle) {
+      var shortTitle = expectedTitle.slice(0, 20);
+      if (!raw.includes(shortTitle)) {
+        console.log("  [SKIP] HTML은 다른 아티클 것 (제목 불일치)");
+        return null;
+      }
+    }
     return raw;
   } catch { return null; }
 }
@@ -179,9 +187,9 @@ function onJsonDetected() {
   if (pendingTimer) clearTimeout(pendingTimer);
   pendingTimer = setTimeout(async function() {
     if (!pendingJson) return;
-    var html = tryReadHtml();
+    var html = tryReadHtml(pendingJson.title);
     lastSentContent = lastJsonContent;
-    if (html) lastHtmlContent = html; // 중복 전송 방지
+    if (html) lastHtmlContent = html;
 
     var result = await sendToApi(pendingJson, html);
 
@@ -203,10 +211,18 @@ function onJsonDetected() {
 }
 
 function onHtmlDetected() {
-  var html = tryReadHtml();
+  if (htmlProcessing) return;
+
+  // 현재 JSON의 제목으로 매칭 (pending이면 그것, 아니면 파일에서 읽기)
+  var currentTitle = null;
+  try {
+    var jsonData = JSON.parse(readFileSync(JSON_FILE, "utf-8"));
+    currentTitle = jsonData.title;
+  } catch {}
+
+  var html = tryReadHtml(currentTitle);
   if (!html) return;
-  // 중복 방지: 같은 내용이거나 이미 처리 중이면 무시
-  if (html === lastHtmlContent || htmlProcessing) return;
+  if (html === lastHtmlContent) return;
   lastHtmlContent = html;
   htmlProcessing = true;
 
@@ -225,12 +241,13 @@ function onHtmlDetected() {
       pendingJson = null; pendingTimer = null; htmlProcessing = false;
     })();
   } else {
+    // JSON이 이미 전송된 후 HTML이 늦게 온 경우
     (async function() {
       try {
-        var jsonData = JSON.parse(readFileSync(JSON_FILE, "utf-8"));
+        var jsonData2 = JSON.parse(readFileSync(JSON_FILE, "utf-8"));
         console.log("  늦게 도착한 HTML → PNG + Discord 전송");
         await screenshotHtml(HTML_FILE);
-        await sendImageToDiscord(PNG_FILE, jsonData.title, jsonData.category, null);
+        await sendImageToDiscord(PNG_FILE, jsonData2.title, jsonData2.category, null);
       } catch (err) {
         console.log("[ERROR] 늦은 HTML 처리: " + err.message);
       }
